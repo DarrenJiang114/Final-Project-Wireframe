@@ -2,8 +2,8 @@ import React, { Component } from 'react';
 import { Redirect } from 'react-router-dom'
 import { connect } from 'react-redux';
 import { compose } from 'redux';
-import ItemsList from './ItemsList.js'
-import { firestoreConnect } from 'react-redux-firebase';
+import { firestoreConnect, getFirebase } from 'react-redux-firebase';
+import {firebaseConnect} from 'react-redux-firebase';
 import { getFirestore } from 'redux-firestore';
 import {Link} from 'react-router-dom';
 import { Modal, Button, icons } from 'react-materialize';
@@ -11,10 +11,12 @@ import Draggable, {DraggableCore} from 'react-draggable';
 import {Resizable} from 'react-resizable';
 import {SketchPicker} from 'react-color';
 import { thisExpression } from '@babel/types';
+import {Rnd} from 'react-rnd';
 
 
 class ListScreen extends Component {
     state = {
+        modalTrig: "modal-trigger",
         diagram: this.props.location.Wireframe.Wireframe.diagram,
         title: this.props.location.Wireframe.Wireframe.title,
         height: this.props.location.Wireframe.Wireframe.height,
@@ -111,22 +113,35 @@ class ListScreen extends Component {
         }  
     }
     setRad = () => {
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var control = this.state.currentControl;
         var id = control.id;
         var x = control.style.borderRadius;
         x = x.substring(1, x.length);
         x = this.state.updateBorderRad + x;
         document.getElementById(id).style.borderRadius = x;
+        for (var i = 0; i< this.state.diagram.length; i++){
+            if(this.state.diagram[i].name == control.name){
+                this.state.diagram[i].borderRad = x;
+            }
+        }
     }
     setBorder = () =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var control = this.state.currentControl;
         var id = control.id;
         var x = control.style.border;
         x = x.substring(1, x.length);
         x = this.state.newBorThick + x;
         document.getElementById(id).style.border = x;
+        for (var i = 0; i< this.state.diagram.length; i++){
+            if(this.state.diagram[i].name == control.name){
+                this.state.diagram[i].border = x;
+            }
+        }
     }
     setTextChanges = () =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var control = this.state.currentControl;
         var id = control.id;
         if(id == "newTextfield"){
@@ -134,15 +149,39 @@ class ListScreen extends Component {
         }
         else{
             document.getElementById(id).innerText = this.state.updatedText;    
+        }
+        for (var i = 0; i< this.state.diagram.length; i++){
+            if(this.state.diagram[i].name == control.name){
+                this.state.diagram[i].innerText = this.state.updatedText;
+            }
         }  
     }
     setFontChanges = () =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var control = this.state.currentControl;
         var id = control.id;
         document.getElementById(id).style.fontSize = this.state.updatedFont;
+        for (var i = 0; i< this.state.diagram.length; i++){
+            if(this.state.diagram[i].name == control.name){
+                this.state.diagram[i].fontSize = this.state.updatedFont;
+            }
+        }
+    }
+    duplicate = (e) =>{
+        var control = this.state.currentControl;
+        if (e.keyCode == 68){
+            var clone = control.cloneNode(true);
+            var x = control.style.left.substring(0, control.style.left.length-2);
+            var y = control.style.top.substring(0, control.style.top.length-2);
+            clone.style.top = (parseInt(y, 10) + 100).toString() + "px";
+            clone.style.left = (parseInt(x, 10) + 100).toString() + "px";
+            document.getElementById("Wireframe").appendChild(clone);
+        }
     }
     deleteControl = (e) => {
-        console.log(this.state.currentControl);
+        var control = this.state.currentControl;
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
+        console.log(e.keyCode);
         if(e.keyCode == 8){
             console.log("heyo");
             document.getElementById("Wireframe").removeChild(this.state.currentControl);
@@ -158,6 +197,9 @@ class ListScreen extends Component {
             this.setState({updatedBG: "#FFFFFF"});
             this.setState({newBorCol: "#000000"});
             this.setState({newFontCol: "#000000"});
+        }
+        if(e.keyCode == 17){
+            control.addEventListener("keydown", this.duplicate);
         }
     }
     selectControl = (e) =>{
@@ -190,7 +232,6 @@ class ListScreen extends Component {
             this.setState({updateBorderRad: control.style.borderRadius.substring(0,1)});
         }
         if(this.state.currentControl == control){
-            
             control.addEventListener("keydown", this.deleteControl);
         }
     }
@@ -204,6 +245,7 @@ class ListScreen extends Component {
         this.setState({newFontCol: "#000000"});
     }
     addButton = () =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var newBTN = document.createElement("button");
         newBTN.id = "newButton";
         newBTN.name = (Math.random() * 1000);
@@ -215,11 +257,11 @@ class ListScreen extends Component {
         newBTN.style.border = this.state.newButtonBorder;
         newBTN.style.borderRadius = this.state.newBorderRad;
         newBTN.style.top = "202px";
-        newBTN.style.left = "302px";
-        newBTN.innerHTML = this.state.newButtonText;
+        newBTN.style.left = "290px";
+        newBTN.innerText = this.state.newButtonText;
         newBTN.addEventListener("click", this.selectControl);
         document.getElementById("Wireframe").appendChild(newBTN);
-        this.state.diagram.add({
+        this.state.diagram.push({
             control: "button",
             id : newBTN.id,
             className: newBTN.className,
@@ -232,13 +274,14 @@ class ListScreen extends Component {
             borderRad: newBTN.style.borderRadius,
             top: newBTN.style.top,
             left: newBTN.style.left,
-            innerHTML: newBTN.innterHTML,
+            innerText: newBTN.innerText,
         });
         console.log(this.state.diagram);
         
     }
 
     addContainer = () => {
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var container = document.createElementNS("http://www.w3.org/2000/svg","svg");
         container.setAttribute("width", this.state.newContainerWidth);
         container.setAttribute("height", this.state.newContainerHeight);
@@ -251,7 +294,7 @@ class ListScreen extends Component {
         container.style.borderRadius = this.state.newContainerRad;
         container.style.position = "relative";
         container.style.top = "202px";
-        container.style.left = "302px";
+        container.style.left = "294px";
         var rectangle = document.createElementNS("http://www.w3.org/2000/svg","rect");
         rectangle.id = "newContainer";
         rectangle.setAttribute("width", this.state.newContainerWidth);
@@ -262,8 +305,6 @@ class ListScreen extends Component {
         this.state.diagram.push({
             control: "container",
             name: container.name,
-            height: container.height,
-            width : container.width,
             tabIndex: -1,
             name: container.name,
             id: container.id,
@@ -279,16 +320,17 @@ class ListScreen extends Component {
     
 
     addLabel = () =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var label = document.createElement("b");
         label.id = "newLabel";
         label.name = (Math.random() * 1000);
         label.tabIndex = -1;
-        label.innerHTML = this.state.newLabel;
+        label.innerText = this.state.newLabel;
         label.style.fontSize = this.state.newLabelFont;
         label.style.cursor = "pointer";
         label.style.position = "relative";
         label.style.top = "202px";
-        label.style.left = "302px";
+        label.style.left = "293px";
         label.addEventListener("click", this.selectControl);
         document.getElementById("Wireframe").appendChild(label);
         this.state.diagram.push({
@@ -297,7 +339,7 @@ class ListScreen extends Component {
             id: label.id,
             name: label.name,
             position: label.style.position,
-            innerHTML: label.innerHTML,
+            innerText: label.innerText,
             cursor: "pointer",
             fontSize: label.style.fontSize,
             top: label.style.top,
@@ -306,6 +348,7 @@ class ListScreen extends Component {
        console.log(this.state.diagram);
     }
     addTextfield = () =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         var textfield = document.createElement("form");
         textfield.id = "newTextfield";
         textfield.className = "text_toolbar";
@@ -318,8 +361,8 @@ class ListScreen extends Component {
         input.type = "text";
         textfield.appendChild(input);
         textfield.style.position = "relative";
-        textfield.style.top = "183px";
-        textfield.style.left = "283px";
+        textfield.style.top = "128px";
+        textfield.style.left = "271px";
         textfield.style.width= "80px";
         textfield.addEventListener("click", this.selectControl);
         document.getElementById("Wireframe").appendChild(textfield);
@@ -347,6 +390,7 @@ class ListScreen extends Component {
         this.state.tempColor = color.hex;
     }
     setColor = (e) =>{
+        this.setState({modalTrig: "modal-trigger"}, () =>{});
         const {target} = e;
         var control = this.state.currentControl;
         var id = control.id;
@@ -358,6 +402,11 @@ class ListScreen extends Component {
             this.setState({updatedBG: this.state.tempColor});
             console.log(this.state.tempColor);
             document.getElementById(id).style.backgroundColor = this.state.tempColor;
+            for (var i = 0; i< this.state.diagram.length; i++){
+                if(this.state.diagram[i].name == control.name){
+                    this.state.diagram[i].bgColor = this.state.tempColor;
+                }
+            }
         }
         if(target.name == "bc"){
             console.log(this.state.tempColor);
@@ -365,18 +414,31 @@ class ListScreen extends Component {
             var x = control.style.border.substring(0,10);
             x += this.state.tempColor;
             document.getElementById(id).style.border = x;
+            for (var i = 0; i< this.state.diagram.length; i++){
+                if(this.state.diagram[i].name == control.name){
+                    this.state.diagram[i].border = x;
+                }
+            }
         }
         if(target.name == "tc"){
             this.setState({newTextcol: this.state.tempColor},()=>{console.log(this.state.newTextcol)});
             document.getElementById(id).style.color = this.state.tempColor;
+            for (var i = 0; i< this.state.diagram.length; i++){
+                if(this.state.diagram[i].name == control.name){
+                    this.state.diagram[i].fontColor = this.state.tempColor;
+                }
+            }
         }
+        
     }
     saveChanges = () =>{
         console.log(this.state.diagram);
+        this.setState({modalTrig: ""}, () =>{});
         const firestore = getFirestore();
+        const firebase = getFirebase();
         firestore.collection("Wireframes").doc(this.state.currentWireFrame.id).update({
             height: this.state.height, width: this.state.width, diagram: this.state.diagram});
-        
+
     }
     loadChanges = () =>{
         console.log("jelly");
@@ -395,14 +457,14 @@ class ListScreen extends Component {
                 newBTN.style.borderRadius = diagram[i].borderRad;
                 newBTN.style.top = diagram[i].top;
                 newBTN.style.left = diagram[i].left;
-                newBTN.innerHTML = diagram[i].innerHTML;
+                newBTN.innerText = diagram[i].innerText;
                 newBTN.addEventListener("click", this.selectControl);
                 document.getElementById("Wireframe").appendChild(newBTN);
             }
             if(diagram[i].control == "container"){
                 var container = document.createElementNS("http://www.w3.org/2000/svg","svg");
-                container.setAttribute("width", diagram[i].width);
-                container.setAttribute("height", diagram[i].height);
+                container.setAttribute("width", this.state.newContainerWidth);
+                container.setAttribute("height", this.state.newContainerHeight);
                 container.name = diagram[i].name;
                 container.id = diagram[i].id;
                 container.tabIndex = -1
@@ -415,8 +477,8 @@ class ListScreen extends Component {
                 container.style.left = diagram[i].left;
                 var rectangle = document.createElementNS("http://www.w3.org/2000/svg","rect");
                 rectangle.id = "newContainer";
-                rectangle.setAttribute("width", diagram[i].width);
-                rectangle.setAttribute("height", diagram[i].height);
+                rectangle.setAttribute("width", this.state.newContainerWidth);
+                rectangle.setAttribute("height", this.state.newContainerHeight);
                 container.appendChild(rectangle);
                 document.getElementById("Wireframe").appendChild(container);
             }
@@ -459,7 +521,13 @@ class ListScreen extends Component {
     componentDidMount(){
         this.loadChanges();
     }
+    ZoomIn =() =>{
+        var wf = document.getElementById("Wireframe");
+        wf.style.transform = "scale(1.2, 1.2)";
+    }
+    ZoomOut = () =>{
 
+    }
 
     render() {
         const auth = this.props.auth;
@@ -478,8 +546,8 @@ class ListScreen extends Component {
         let RightRectstyle = {fill: "#FAE5D3" , strokewidth:3 , stroke:"#000000", position: "absolute", 
         top: "100px", left: "800px", zindex: 1};
         let newConStyle = {fill: this.state.newContainerFill, border: this.state.newContainerBorder, position: "relative", top: "202px", left:"302px"}
-        let ZoomIn = {position: "relative", z: 1, top: "40px", left: "-140px"}
-        let ZoomOut = {position: "relative", z: 1, top: "40px", left: "-145px"}
+        let ZoomIn = {position: "relative", z: 1, top: "40px", left: "-140px", cursor: "pointer"}
+        let ZoomOut = {position: "relative", z: 1, top: "40px", left: "-145px", cursor: "pointer"}
         let SaveBTN = {position: "relative", z: 1, top: "30px", left: "-140px", font:"6px" }
         let CloseBTN = {position: "relative", z: 1, top: "30px", left: "-140px" }
         let Container = {fill: "#FFFFFF", z: 1, position: "absolute", top: "180px",
@@ -514,6 +582,7 @@ class ListScreen extends Component {
         
         let TestStyle = {position: "relative", border: "2px solid black", fill: "#FFFFFF", top: "95px", left: "45px"}
         let modalStyle = {position: "absolute", top: "410px", left: "520px"}
+        let modalStyle1 = {position: "absolute", top: "90px", left: "545px"}
         return (
             <div>
                 <div id = "leftControl" className="container">
@@ -521,12 +590,17 @@ class ListScreen extends Component {
                         <rect  width = "220" height = "840"> 
                         </rect> 
                     </svg>
-                    <i class = "small material-icons" style ={ZoomIn} >zoom_in</i>
-                    <i class = "small material-icons" style ={ZoomOut} >zoom_out</i>
+                    <i onClick = {this.ZoomIn} class = "small material-icons" style ={ZoomIn} >zoom_in</i>
+                    <i onClick = {this.ZoomOut} class = "small material-icons" style ={ZoomOut} >zoom_out</i>
                     <a class="waves-effect waves-light grey btn-small" 
                     style = {SaveBTN} onClick = {this.saveChanges}>Save</a>
-                    <a class="waves-effect waves-light grey btn-small" 
-                    style = {CloseBTN}>Close</a>
+                    <Link to = "/" ><a className={"waves-effect waves-light grey btn-small " + this.state.modalTrig}
+                    style = {CloseBTN} data-target = "confirmSave">Close</a>
+                    <Modal id = "confirmSave">
+                        <b>Do you want to save your changes?</b>
+                        <button onClick = {this.saveChanges} style = {modalStyle1}class = "waves-effect waves-teal btn-flat modal-close">Save</button>
+                    </Modal>
+                    </Link>
                     <svg width = "150" height = "100" style = {Container}>
                         <rect  width = "125" height = "75"> 
                         </rect> 
@@ -604,15 +678,15 @@ class ListScreen extends Component {
                     </div>
                     <a class= {"waves-effect waves-light grey btn-small " + this.state.dimDis}
                     style = {UpdateBTN} onClick = {this.applyDim}>Update</a>
-                    <Draggable defaultPosition = {{x: -250, y: -120}}>
+                    <Rnd default = {{x: -125, y: -110}}>
                     <div className = "container" id = "Wireframe">
                         <svg id = "diagram" width = {this.state.width} height = {this.state.height} 
                             style = {WireframeStyle} onClick = {this.undoControl}>
                             <rect  width = {this.state.width} height = {this.state.height}> 
                             </rect> 
-                        </svg>  
+                        </svg>
                     </div>
-                    </Draggable>
+                    </Rnd>
                     <div id = "wireframe-components">
 
                     </div>
