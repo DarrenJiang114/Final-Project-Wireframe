@@ -5,115 +5,467 @@ import { compose } from 'redux';
 import ItemsList from './ItemsList.js'
 import { firestoreConnect } from 'react-redux-firebase';
 import { getFirestore } from 'redux-firestore';
+import {Link} from 'react-router-dom';
 import { Modal, Button, icons } from 'react-materialize';
+import Draggable, {DraggableCore} from 'react-draggable';
+import {Resizable} from 'react-resizable';
+import {SketchPicker} from 'react-color';
+import { thisExpression } from '@babel/types';
 
 
 class ListScreen extends Component {
     state = {
-        name: '',
-        owner: '',
+        diagram: this.props.location.Wireframe.Wireframe.diagram,
+        title: this.props.location.Wireframe.Wireframe.title,
+        height: this.props.location.Wireframe.Wireframe.height,
+        width: this.props.location.Wireframe.Wireframe.width,
+        currentWireFrame: this.props.location.Wireframe.Wireframe,
+        newContainer: false,
+        tempHeight: "",
+        tempWidth: "",
+        dimDis: "disabled",
+        newButtonText: "text",
+        newButtonFont: "13px",
+        newButtonBG: "#9e9e9e",
+        newButtonBorder: "1px solid #000000",
+        newBorderRad: "2px",
+        newLabelFont: "15px",
+        newContainerWidth: "50",
+        newContainerHeight: "50",
+        newContainerFill: "#FFFFFF",
+        newContainerBorder: "2px solid #000000",
+        newContainerRad: "2px",
+        newInputVal: "",
+        newLabel: "Label:",
+        currentControl: null,
+        updatedText: "",
+        updatedFont: "",
+        updatedBG: "#FFFFFF",
+        tempColor: "#FFFFFF",
+        newBorCol: "#000000",
+        newBorThick: "",
+        newTextcol: "#000000",
+        newFontCol: "#000000",
+        updateBorderRad: "",
     }
 
     sortCriteria = 'none';
     changedTime = false;
 
-    updateTime = () => {
-        console.log("updating time")
-        let fireStore = getFirestore();
-        fireStore.collection('todoLists').doc(this.props.todoList.id).update({ time: Date.now() })
+    applyDim = () => {
+        if ((0 < this.state.tempHeight) && (this.state.tempHeight< 5000)){
+            this.setState({height: this.state.tempHeight});
+            this.setState({dimDis: "disabled"});
+        }
+        if ((0<this.state.tempWidth) && (this.state.tempWidth<5000)){
+            this.setState({width: this.state.tempWidth});
+            this.setState({dimDis: "disabled"});
+        }
     }
 
     handleChange = (e) => {
         const { target } = e;
-
-        this.setState(state => ({
-            ...state,
-            [target.id]: target.value,
-        }));
-
-        const fireStore = getFirestore();
-        let dbitem = fireStore.collection('todoLists').doc(this.props.todoList.id);
-        dbitem.update({ [target.id]: target.value });
-    }
-
-    addItem = () => {
-        console.log("Adding a new item");
-        this.props.history.push({
-            pathname: this.props.todoList.id + "/item/" + this.props.todoList.items.length,
-        });
-    }
-
-    deleteList = () => {
-        let fireStore = getFirestore();
-        fireStore.collection('todoLists').doc(this.props.todoList.id).delete().then(function () {
-            console.log("Document successfully deleted!");
-        }).catch(function (error) {
-            console.error("Error removing document: ", error);
-        });
-
-        this.props.history.goBack();
-    }
-
-    sortByDescription = () => {
-        if (this.sortCriteria !== SORT_BY_TASK_INCREASING)
-            this.sortCriteria = SORT_BY_TASK_INCREASING
-        else
-            this.sortCriteria = SORT_BY_TASK_DECREASING;
-        this.sortList(this.sortCriteria);
-    }
-
-    sortByDueDate = () => {
-        if (this.sortCriteria !== SORT_BY_DUE_DATE_INCREASING)
-            this.sortCriteria = SORT_BY_DUE_DATE_INCREASING;
-        else
-            this.sortCriteria = SORT_BY_DUE_DATE_DECREASING;
-        this.sortList(this.sortCriteria);
-    }
-
-    sortByCompleted = () => {
-        if (this.sortCriteria !== SORT_BY_STATUS_INCREASING)
-            this.sortCriteria = SORT_BY_STATUS_INCREASING;
-        else
-            this.sortCriteria = SORT_BY_STATUS_DECREASING;
-        this.sortList(this.sortCriteria);
-    }
-
-    sortList = (criteria) => {
-        console.log("Sorting by: ", this.sortCriteria);
-        let newItems = this.generateItemsInSortedOrder(criteria);
-        for (let i = 0; i < newItems.length; i++) {
-            newItems[i].key = i;
-            newItems[i].id = i;
+        console.log("hey");
+        if(target.name == "newInput"){
+            this.setState({newInputVal: target.value}, () => {});
+            this.setState({updatedText: target.value}, () =>{});
         }
-
-        let firestore = getFirestore();
-        firestore.collection("todoLists").doc(this.props.todoList.id).update({ items: newItems });
+        if(target.name == "tempHeight"){
+            this.setState({tempHeight: target.value},()=>{
+                console.log(this.state.tempHeight);
+            });
+            if((this.state.tempHeight.length>0) || (this.state.tempWidth.length>0)){
+                this.setState({dimDis: "enabled"});
+            }
+            else{
+                this.setState({dimDis: "disabled"});
+            }
+        }
+        if(target.name == "tempWidth"){
+            this.setState({tempWidth: target.value},()=>{
+                console.log(this.state.tempWidth);
+            });
+            if((this.state.tempHeight.length>0) || (this.state.tempWidth.length>0)){
+                this.setState({dimDis: "enabled"});
+            }
+            else{
+                this.setState({dimDis: "disabled"});
+            }
+        }
+       
+        if((target.name == "updatedText") && (this.state.currentControl != null )){
+            this.setState({updatedText: target.value},() =>{
+                this.setTextChanges();
+            });
+        }
+        if((target.name == "updatedFont")&&(this.state.currentControl != null)){
+            this.setState({updatedFont: (target.value + "px")}, () =>{
+                this.setFontChanges();
+            });       
+        }
+        if((target.name == "updateThick")&&(this.state.currentControl != null)){
+            this.setState({newBorThick: (target.value)}, () => {this.setBorder()});
+        }
+        if((target.name == "updateRad")&&(this.state.currentControl != null)){
+            this.setState({updateBorderRad: (target.value)}, () => this.setRad());
+        }  
     }
-
-    generateItemsInSortedOrder = (criteria) => {
-        let newItems = Object.assign([], this.props.todoList.items);
-        newItems.sort(function (a, b) {
-            if (criteria === SORT_BY_TASK_INCREASING)
-                return a.description.localeCompare(b.description);
-            else if (criteria === SORT_BY_TASK_DECREASING)
-                return b.description.localeCompare(a.description);
-            else if (criteria === SORT_BY_DUE_DATE_INCREASING)
-                return a.due_date.localeCompare(b.due_date);
-            else if (criteria === SORT_BY_DUE_DATE_DECREASING)
-                return b.due_date.localeCompare(a.due_date);
-            else if (criteria === SORT_BY_STATUS_INCREASING)
-                return ("" + a.completed).localeCompare("" + b.completed);
-            else
-                return ("" + b.completed).localeCompare("" + a.completed);
+    setRad = () => {
+        var control = this.state.currentControl;
+        var id = control.id;
+        var x = control.style.borderRadius;
+        x = x.substring(1, x.length);
+        x = this.state.updateBorderRad + x;
+        document.getElementById(id).style.borderRadius = x;
+    }
+    setBorder = () =>{
+        var control = this.state.currentControl;
+        var id = control.id;
+        var x = control.style.border;
+        x = x.substring(1, x.length);
+        x = this.state.newBorThick + x;
+        document.getElementById(id).style.border = x;
+    }
+    setTextChanges = () =>{
+        var control = this.state.currentControl;
+        var id = control.id;
+        if(id == "newTextfield"){
+            document.getElementById(id).childNodes.value = this.state.updatedText;
+        }
+        else{
+            document.getElementById(id).innerText = this.state.updatedText;    
+        }  
+    }
+    setFontChanges = () =>{
+        var control = this.state.currentControl;
+        var id = control.id;
+        document.getElementById(id).style.fontSize = this.state.updatedFont;
+    }
+    deleteControl = (e) => {
+        console.log(this.state.currentControl);
+        if(e.keyCode == 8){
+            console.log("heyo");
+            document.getElementById("Wireframe").removeChild(this.state.currentControl);
+            for(var i = 0; i < this.state.diagram.length; i++){
+                if(this.state.currentControl.name == this.state.diagram[i].name){
+                    this.state.diagram.splice(i, 1);
+                }
+            }
+      
+            this.setState({currentControl: null});
+            this.setState({updatedText: ""});
+            this.setState({updatedFont: ""});
+            this.setState({updatedBG: "#FFFFFF"});
+            this.setState({newBorCol: "#000000"});
+            this.setState({newFontCol: "#000000"});
+        }
+    }
+    selectControl = (e) =>{
+        var control = e.target;
+        console.log(control);
+        if ((control.id == "newInput") && (control.value.length!=0)){
+            return;
+        }
+        if((e.target.id == "newInput" )|| (e.target.id == "newContainer")){
+            control = e.target.parentNode;
+        }
+        console.log(control.style);
+        this.setState({currentControl: control});
+        console.log(this.state.currentControl);
+        if(control.id == "newContainer2"){
+            this.setState({updatedBG: control.style.fill});
+            this.setState({newBorThick: control.style.border.substring(0,1)});
+            this.setState({newBorCol: control.style.border.substring(10, control.style.border.length)});
+            this.setState({updateBorderRad: control.style.borderRadius.substring(0,1)});
+        }
+        if((e.target.id == "newButton") || (e.target.id == "newLabel")){
+            this.setState({updatedText: control.innerText});
+            this.setState({updatedFont: control.style.fontSize},() =>{
+                console.log(this.state.currentControl);
+            });
+            this.setState({updatedBG: control.style.backgroundColor});
+            this.setState({newBorCol: control.style.border.substring(10, control.style.border.length)});
+            this.setState({newFontCol: control.style.color});
+            this.setState({newBorThick: control.style.border.substring(0,1)});
+            this.setState({updateBorderRad: control.style.borderRadius.substring(0,1)});
+        }
+        if(this.state.currentControl == control){
+            
+            control.addEventListener("keydown", this.deleteControl);
+        }
+    }
+    undoControl = () =>{
+        console.log("p");
+        this.setState({currentControl: null});
+        this.setState({updatedText: ""});
+        this.setState({updatedFont: ""});
+        this.setState({updatedBG: "#FFFFFF"});
+        this.setState({newBorCol: "#000000"});
+        this.setState({newFontCol: "#000000"});
+    }
+    addButton = () =>{
+        var newBTN = document.createElement("button");
+        newBTN.id = "newButton";
+        newBTN.name = (Math.random() * 1000);
+        newBTN.className = "waves-effect waves-light btn-small";
+        newBTN.style.position = "relative";
+        newBTN.style.fontSize = this.state.newButtonFont;
+        newBTN.style.color = this.state.newFontCol;
+        newBTN.style.backgroundColor = this.state.newButtonBG;
+        newBTN.style.border = this.state.newButtonBorder;
+        newBTN.style.borderRadius = this.state.newBorderRad;
+        newBTN.style.top = "202px";
+        newBTN.style.left = "302px";
+        newBTN.innerHTML = this.state.newButtonText;
+        newBTN.addEventListener("click", this.selectControl);
+        document.getElementById("Wireframe").appendChild(newBTN);
+        this.state.diagram.add({
+            control: "button",
+            id : newBTN.id,
+            className: newBTN.className,
+            name: newBTN.name,
+            position: newBTN.style.position,
+            fontSize: newBTN.style.fontSize,
+            fontColor: newBTN.style.color,
+            bgColor: newBTN.style.backgroundColor,
+            border:  newBTN.style.border,
+            borderRad: newBTN.style.borderRadius,
+            top: newBTN.style.top,
+            left: newBTN.style.left,
+            innerHTML: newBTN.innterHTML,
         });
-        return newItems;
+        console.log(this.state.diagram);
+        
     }
+
+    addContainer = () => {
+        var container = document.createElementNS("http://www.w3.org/2000/svg","svg");
+        container.setAttribute("width", this.state.newContainerWidth);
+        container.setAttribute("height", this.state.newContainerHeight);
+        container.id = "newContainer2";
+        container.name = (Math.random() * 1000);
+        container.tabIndex = -1
+        container.addEventListener("click", this.selectControl);
+        container.style.fill = this.state.newContainerFill;
+        container.style.border = this.state.newContainerBorder;
+        container.style.borderRadius = this.state.newContainerRad;
+        container.style.position = "relative";
+        container.style.top = "202px";
+        container.style.left = "302px";
+        var rectangle = document.createElementNS("http://www.w3.org/2000/svg","rect");
+        rectangle.id = "newContainer";
+        rectangle.setAttribute("width", this.state.newContainerWidth);
+        rectangle.setAttribute("height", this.state.newContainerHeight);
+        container.appendChild(rectangle);
+        console.log(container);
+        document.getElementById("Wireframe").appendChild(container);
+        this.state.diagram.push({
+            control: "container",
+            name: container.name,
+            height: container.height,
+            width : container.width,
+            tabIndex: -1,
+            name: container.name,
+            id: container.id,
+            position: container.style.position,
+            bgColor: container.style.fill,
+            border:  container.style.border,
+            borderRad: container.style.borderRadius,
+            top: container.style.top,
+            left: container.style.left,
+        });
+        console.log(this.state.diagram);
+    }
+    
+
+    addLabel = () =>{
+        var label = document.createElement("b");
+        label.id = "newLabel";
+        label.name = (Math.random() * 1000);
+        label.tabIndex = -1;
+        label.innerHTML = this.state.newLabel;
+        label.style.fontSize = this.state.newLabelFont;
+        label.style.cursor = "pointer";
+        label.style.position = "relative";
+        label.style.top = "202px";
+        label.style.left = "302px";
+        label.addEventListener("click", this.selectControl);
+        document.getElementById("Wireframe").appendChild(label);
+        this.state.diagram.push({
+            control: "label",
+            tabIndex: -1,
+            id: label.id,
+            name: label.name,
+            position: label.style.position,
+            innerHTML: label.innerHTML,
+            cursor: "pointer",
+            fontSize: label.style.fontSize,
+            top: label.style.top,
+            left: label.style.left,
+        });
+       console.log(this.state.diagram);
+    }
+    addTextfield = () =>{
+        var textfield = document.createElement("form");
+        textfield.id = "newTextfield";
+        textfield.className = "text_toolbar";
+        textfield.name = (Math.random() * 1000);
+        var input = document.createElement("input");
+        input.className = "browser-default";
+        input.name = "newInput";
+        input.id = "newInput";
+        input.value = this.state.newInputVal;
+        input.type = "text";
+        textfield.appendChild(input);
+        textfield.style.position = "relative";
+        textfield.style.top = "183px";
+        textfield.style.left = "283px";
+        textfield.style.width= "80px";
+        textfield.addEventListener("click", this.selectControl);
+        document.getElementById("Wireframe").appendChild(textfield);
+        this.state.diagram.push({
+            control: "textfield",
+            id: textfield.id,
+            name: textfield.name,
+            className: textfield.className,
+            inputClassName: input.className,
+            position: textfield.style.position,
+            top: textfield.style.top,
+            left: textfield.style.left,
+            width: textfield.style.width,
+            value: input.value,
+            inName: input.name,
+            type: input.type,
+        });
+        
+    }
+
+
+    handleColorChange = (color, e) =>{
+        console.log(color.hex);
+        e.preventDefault();
+        this.state.tempColor = color.hex;
+    }
+    setColor = (e) =>{
+        const {target} = e;
+        var control = this.state.currentControl;
+        var id = control.id;
+        if(target.name == "bg"){
+            if(control.id == "newContainer2"){
+                this.setState({updatedBG: this.state.tempColor});
+                document.getElementById(id).style.fill = this.state.tempColor;
+            }
+            this.setState({updatedBG: this.state.tempColor});
+            console.log(this.state.tempColor);
+            document.getElementById(id).style.backgroundColor = this.state.tempColor;
+        }
+        if(target.name == "bc"){
+            console.log(this.state.tempColor);
+            this.setState({newBorCol: this.state.tempColor},()=>{});
+            var x = control.style.border.substring(0,10);
+            x += this.state.tempColor;
+            document.getElementById(id).style.border = x;
+        }
+        if(target.name == "tc"){
+            this.setState({newTextcol: this.state.tempColor},()=>{console.log(this.state.newTextcol)});
+            document.getElementById(id).style.color = this.state.tempColor;
+        }
+    }
+    saveChanges = () =>{
+        console.log(this.state.diagram);
+        const firestore = getFirestore();
+        firestore.collection("Wireframes").doc(this.state.currentWireFrame.id).update({
+            height: this.state.height, width: this.state.width, diagram: this.state.diagram});
+        
+    }
+    loadChanges = () =>{
+        console.log("jelly");
+        var diagram = this.state.diagram;
+        for (var i = 0; i<diagram.length; i++){
+            if (diagram[i].control == "button"){
+                var newBTN = document.createElement("button");
+                newBTN.id = diagram[i].id;
+                newBTN.name = diagram[i].name;
+                newBTN.className = diagram[i].className;
+                newBTN.style.position = diagram[i].position;
+                newBTN.style.fontSize = diagram[i].fontSize;
+                newBTN.style.color = diagram[i].fontColor;
+                newBTN.style.backgroundColor = diagram[i].bgColor;
+                newBTN.style.border = diagram[i].border;
+                newBTN.style.borderRadius = diagram[i].borderRad;
+                newBTN.style.top = diagram[i].top;
+                newBTN.style.left = diagram[i].left;
+                newBTN.innerHTML = diagram[i].innerHTML;
+                newBTN.addEventListener("click", this.selectControl);
+                document.getElementById("Wireframe").appendChild(newBTN);
+            }
+            if(diagram[i].control == "container"){
+                var container = document.createElementNS("http://www.w3.org/2000/svg","svg");
+                container.setAttribute("width", diagram[i].width);
+                container.setAttribute("height", diagram[i].height);
+                container.name = diagram[i].name;
+                container.id = diagram[i].id;
+                container.tabIndex = -1
+                container.addEventListener("click", this.selectControl);
+                container.style.fill = diagram[i].bgColor;
+                container.style.border = diagram[i].border;
+                container.style.borderRadius = diagram[i].borderRad;
+                container.style.position = diagram[i].position;
+                container.style.top = diagram[i].top;
+                container.style.left = diagram[i].left;
+                var rectangle = document.createElementNS("http://www.w3.org/2000/svg","rect");
+                rectangle.id = "newContainer";
+                rectangle.setAttribute("width", diagram[i].width);
+                rectangle.setAttribute("height", diagram[i].height);
+                container.appendChild(rectangle);
+                document.getElementById("Wireframe").appendChild(container);
+            }
+            if(diagram[i].control == "label"){
+                var label = document.createElement("b");
+                label.id = diagram[i].id;
+                label.tabIndex = -1;
+                label.name = diagram[i].name;
+                label.innerHTML = diagram[i].innerHTML;
+                label.style.fontSize = diagram[i].fontSize;
+                label.style.cursor = "pointer";
+                label.style.position = diagram[i].position;
+                label.style.top = diagram[i].top;
+                label.style.left =diagram[i].left;
+                label.addEventListener("click", this.selectControl);
+                document.getElementById("Wireframe").appendChild(label);
+            }
+            if(diagram[i].control == "textfield"){
+                var textfield = document.createElement("form");
+                textfield.id = diagram[i].id;
+                textfield.className = diagram[i].id;
+                textfield.name = diagram[i].name;
+                var input = document.createElement("input");
+                input.className = diagram[i].inputClassName;
+                input.name = diagram[i].inName;
+                input.id = "newInput";
+                input.value = diagram[i].value;
+                input.type = diagram[i].type;
+                textfield.appendChild(input);
+                textfield.style.position = diagram[i].position;
+                textfield.style.top = diagram[i].top;
+                textfield.style.left = diagram[i].left;
+                textfield.style.width= diagram[i].width;
+                textfield.addEventListener("click", this.selectControl);
+                document.getElementById("Wireframe").appendChild(textfield);
+            }
+
+        }
+    }
+    componentDidMount(){
+        this.loadChanges();
+    }
+
 
     render() {
         const auth = this.props.auth;
-
-        let Wireframe = this.props.location.Wireframe;
-        console.log(Wireframe);
+        console.log(document.getElementById("Wireframe"));
+        console.log(this.props.location.Wireframe.Wireframe);
+        let Wireframe = this.props.location.Wireframe.Wireframe;
         if (!auth.uid) {
             return <Redirect to="/" />;
         }
@@ -122,48 +474,149 @@ class ListScreen extends Component {
             return <React.Fragment />
         }
         let LeftRectstyle = {fill: "#FAE5D3" , strokewidth:3 , stroke:"#000000", position: "absolute", 
-        top: "100px", left: "10px", z: "-1"};
+        top: "100px", left: "10px", zindex: 1};
         let RightRectstyle = {fill: "#FAE5D3" , strokewidth:3 , stroke:"#000000", position: "absolute", 
-        top: "100px", left: "800px"};
+        top: "100px", left: "800px", zindex: 1};
+        let newConStyle = {fill: this.state.newContainerFill, border: this.state.newContainerBorder, position: "relative", top: "202px", left:"302px"}
         let ZoomIn = {position: "relative", z: 1, top: "40px", left: "-140px"}
         let ZoomOut = {position: "relative", z: 1, top: "40px", left: "-145px"}
         let SaveBTN = {position: "relative", z: 1, top: "30px", left: "-140px", font:"6px" }
         let CloseBTN = {position: "relative", z: 1, top: "30px", left: "-140px" }
         let Container = {fill: "#FFFFFF", z: 1, position: "absolute", top: "180px",
         left: "60px"}
-        let containerLabel = {position: "absolute", left: "75px", top: "260px"}
-        let properties = {position: "relative", left: "700px", top: "10px"}
+        let containerLabel = {position: "absolute", left: "75px", top: "260px", cursor: "pointer"}
+        let properties = {position: "absolute", left: "840px", top: "110px"}
         let inputPrompt = {position: "absolute", left: "45px", top: "290px"}
-        let label = {position: "absolute", left: "90px", top: "310px"}
+        let label = {position: "absolute", left: "90px", top: "310px", cursor: "pointer"}
+        let SubmitBTN = {position: "absolute", z: 1, top: "360px", left: "70px"}
+        let btnlabel = {position: "absolute", top: "395px", left: "90px", z: 1, cursor: "pointer"}
+        let TextfieldInput = {position: "absolute", z: 1, top: "410px", left: "40px"}
+        let textfield = {position: "absolute", z: 1, top: "480px", left: "85px", cursor: "pointer"}
+        let propinput = {position: "absolute", z: 1, top: "120px", left: "820px"}
+        let fontlabel = {position: "absolute", z: 1, top: "210px", left: "800px"}
+        let FontInput = {position: "absolute", z: 1, top: "220px", left: "800px"}
+        let label1 = {position: "absolute", z: 1, top: "310px", left: "800px"}
+        let label2 = {position: "absolute", z: 1, top: "390px", left: "800px"}
+        let label3 = {position: "absolute", z: 1, top: "550px", left: "800px"}
+        let label4 = {position: "absolute", z: 1, top: "630px", left: "800px"}
+        let label5 = {position: "absolute", z: 1, top: "710px", left: "800px"}
+        let label6 = {position: "absolute", z: 1, top: "790px", left: "800px"}
+        let TClabel = {position: "absolute", z: 1, top: "470px", left: "800px"}
+        let tccircle = {stroke:"#000000 ", strokewidth:"3", fill: this.state.newTextcol, position: "absolute", z: 1, top: "460px", left: "940px", cursor: "pointer"}
+        let bgcircle = {stroke:"#000000 ", strokewidth:"3", fill: this.state.updatedBG, position: "absolute", z: 1, top: "300px", left: "940px", cursor: "pointer"}
+        let bccircle = {stroke:"#000000 ", strokewidth:"3", fill: this.state.newBorCol, position: "absolute", z: 1, top: "380px", left: "940px", cursor:"pointer"}
+        let thickInput = {position: "absolute", z: 1, top: "550px", left: "800px"}
+        let radInput = {position: "absolute", z: 1, top: "630px", left: "800px"}
+        let WidthInput = {position: "absolute", z: 1, top: "710px", left: "800px"}
+        let HeightInput = {position: "absolute", z: 1, top: "790px", left: "800px"}
+        let UpdateBTN = {position: "absolute", z: 1, top: "860px", left: "810px"}
+        let WireframeStyle = {position: "absolute", zindex : -1, left: "300px", top: "200px",fill: "#FFFFFF", border: "2px solid black"}
+        
+        let TestStyle = {position: "relative", border: "2px solid black", fill: "#FFFFFF", top: "95px", left: "45px"}
+        let modalStyle = {position: "absolute", top: "410px", left: "520px"}
         return (
             <div>
-                <div className="container">
-                    <svg width = "255" height = "550" style = {LeftRectstyle}>
-                        <rect  width = "220" height = "500"> 
+                <div id = "leftControl" className="container">
+                    <svg width = "255" height = "850" style = {LeftRectstyle}>
+                        <rect  width = "220" height = "840"> 
                         </rect> 
                     </svg>
                     <i class = "small material-icons" style ={ZoomIn} >zoom_in</i>
                     <i class = "small material-icons" style ={ZoomOut} >zoom_out</i>
                     <a class="waves-effect waves-light grey btn-small" 
-                    style = {SaveBTN}>Save</a>
+                    style = {SaveBTN} onClick = {this.saveChanges}>Save</a>
                     <a class="waves-effect waves-light grey btn-small" 
                     style = {CloseBTN}>Close</a>
                     <svg width = "150" height = "100" style = {Container}>
                         <rect  width = "125" height = "75"> 
                         </rect> 
                     </svg>
-                    <span style = {containerLabel}>Container</span>
+                    <b onClick = {this.addContainer} style = {containerLabel}>Container</b>
                     <span style = {inputPrompt}>Prompt for input:</span>
-                    <b style = {label}>Label</b>
+                    <b onClick = {this.addLabel} style = {label}>Label</b>
+                    <a class="waves-effect waves-light grey btn-small" 
+                    style = {SubmitBTN} onClick = {this.loadChanges}>Submit</a>
+                    <b onClick = {this.addButton} style = {btnlabel}>Button</b>
+                    <div class = "input-field" style = {TextfieldInput}>
+                        <label>input</label>
+                        <input className = "active" type= "text" ></input>
+                    </div>
+                    <b onClick = {this.addTextfield} style = {textfield}>Textfield</b>
                 </div>
                 <div className="container">
-                    <svg width = "250" height = "550" style = {RightRectstyle}>
-                        <rect  width = "200" height = "500" />
+                    <svg width = "270" height = "850" style = {RightRectstyle}>
+                        <rect  width = "250" height = "840" />
                     </svg>
                     <span style ={properties}>Properties</span>
-                    <div className = "input-field" >
-                            <input className = "active" type= "text" ></input>
+                    <div class = "input-field" style = {propinput}> 
+                        <input className = "active" type = "text" name = "updatedText" onChange = {this.handleChange} value = {this.state.updatedText}></input>
                     </div>
+                    <b style = {fontlabel}>Font Size:</b>
+                    <div class = "input-field" style = {FontInput}>
+                        <input className = "active" name = "updatedFont" onChange = {this.handleChange} value = {this.state.updatedFont.substring(0,this.state.updatedFont.length-2)} type= "text" ></input>
+                    </div>
+                    <b style = {label1}>Background:</b>
+                    <b style = {label2}>Border Color:</b>
+                    <b style = {label3}>Border Thickness:</b>
+                    <b style = {label4}>Border Radius:</b>
+                    <b style = {TClabel}>Text Color:</b>
+                    <svg className = "modal-trigger" data-target = "tcCP"height = "60" width = "60" style = {tccircle}>
+                        <circle cx = "25" cy = "25" r = "25"></circle>
+                    </svg>
+                    <svg className = "modal-trigger" data-target = "bgCP"height = "60" width = "60" style = {bgcircle}>
+                        <circle cx = "25" cy = "25" r = "25"></circle>
+                    </svg>
+                    <Modal id = "tcCP">
+                        <SketchPicker onChange = {this.handleColorChange}></SketchPicker>
+                        <a style = {modalStyle} name = "tc" onClick = {this.setColor} class="waves-effect waves-light grey btn-small modal-close">apply</a>
+                        
+                    </Modal>
+                    <Modal id = "bgCP">
+                        <SketchPicker onChange = {this.handleColorChange}></SketchPicker>
+                        <a style = {modalStyle} name = "bg" onClick = {this.setColor} class="waves-effect waves-light grey btn-small modal-close">apply</a>
+                        
+                    </Modal>
+                    <Modal id = "bcCP">
+                        <SketchPicker onChange = {this.handleColorChange}></SketchPicker>
+                        <a style = {modalStyle} name = "bc" onClick = {this.setColor} class="waves-effect waves-light grey btn-small modal-close">apply</a>
+                        
+                    </Modal>
+                    <svg className = "modal-trigger" data-target = "bcCP" height = "60" width = "60" style = {bccircle}>
+                        <circle cx = "25" cy = "25" r = "25"></circle>
+                    </svg>
+                    <div class = "input-field" style = {thickInput}>
+                        <label>Thickness</label>
+                        <input name = "updateThick" className = "active" type= "text" value = {this.state.newBorThick} onChange = {this.handleChange}></input>
+                    </div>
+                    <div class = "input-field" style = {radInput}>
+                        <label>Radius</label>
+                        <input name = "updateRad" className = "active" type= "text" value = {this.state.updateBorderRad} onChange = {this.handleChange}></input>
+                    </div>
+                    <b style = {label5}>Width:</b>
+                    <b style = {label6}>Height:</b>
+                    <div class = "input-field" style = {WidthInput}>
+                        <label>Width</label>
+                        <input className = "active" type= "text" name = "tempWidth" onChange = {this.handleChange}></input>
+                    </div>
+                    <div class = "input-field" style = {HeightInput}>
+                        <label>Height</label>
+                        <input className = "active" type= "text" name = "tempHeight" onChange = {this.handleChange}></input>
+                    </div>
+                    <a class= {"waves-effect waves-light grey btn-small " + this.state.dimDis}
+                    style = {UpdateBTN} onClick = {this.applyDim}>Update</a>
+                    <Draggable defaultPosition = {{x: -250, y: -120}}>
+                    <div className = "container" id = "Wireframe">
+                        <svg id = "diagram" width = {this.state.width} height = {this.state.height} 
+                            style = {WireframeStyle} onClick = {this.undoControl}>
+                            <rect  width = {this.state.width} height = {this.state.height}> 
+                            </rect> 
+                        </svg>  
+                    </div>
+                    </Draggable>
+                    <div id = "wireframe-components">
+
+                    </div>
+                    
                 </div>
             </div>
         );

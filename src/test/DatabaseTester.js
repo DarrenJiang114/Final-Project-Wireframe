@@ -20,13 +20,14 @@ class DatabaseTester extends React.Component {
 
     handleReset = () => {
         const fireStore = getFirestore();
-        WireframeJson.Wireframes.forEach(WireframeJson => {
+        WireframeJson.forEach(WireframeJson => {
             fireStore.collection('Wireframes').add({
                     title: WireframeJson.title,
                     email: WireframeJson.email,
                     height: WireframeJson.height,
                     width: WireframeJson.width,
-                    key: WireframeJson.key
+                    key: WireframeJson.key,
+                    diagram: WireframeJson.diagram,
                 }).then(() => {
                     console.log("DATABASE RESET");
                 }).catch((err) => {

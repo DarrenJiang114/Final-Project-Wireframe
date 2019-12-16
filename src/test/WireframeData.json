@@ -6,8 +6,10 @@
             "email": "darrenjiang@gmail.com",
             "height": 200,
             "width" : 250,
-            "diagram": [
-                
-            ]
+            "diagram": {
+
+                }
+
+            
         }
     ]
