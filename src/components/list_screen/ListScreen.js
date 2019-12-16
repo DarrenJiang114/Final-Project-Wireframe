@@ -37,7 +37,7 @@ class ListScreen extends Component {
         newContainerFill: "#FFFFFF",
         newContainerBorder: "2px solid #000000",
         newContainerRad: "2px",
-        newInputVal: "",
+        newInputVal: "input",
         newLabel: "Label:",
         currentControl: null,
         updatedText: "",
@@ -145,7 +145,8 @@ class ListScreen extends Component {
         var control = this.state.currentControl;
         var id = control.id;
         if(id == "newTextfield"){
-            document.getElementById(id).childNodes.value = this.state.updatedText;
+            console.log(control);
+            document.getElementById(id).value= this.state.updatedText;
         }
         else{
             document.getElementById(id).innerText = this.state.updatedText;    
@@ -205,13 +206,11 @@ class ListScreen extends Component {
     selectControl = (e) =>{
         var control = e.target;
         console.log(control);
-        if ((control.id == "newInput") && (control.value.length!=0)){
-            return;
-        }
+        
         if((e.target.id == "newInput" )|| (e.target.id == "newContainer")){
-            control = e.target.parentNode;
+            this.setState({updatedText: control.value}, () => {});
         }
-        console.log(control.style);
+        console.log(this.state.currentControl);
         this.setState({currentControl: control});
         console.log(this.state.currentControl);
         if(control.id == "newContainer2"){
@@ -232,6 +231,10 @@ class ListScreen extends Component {
             this.setState({updateBorderRad: control.style.borderRadius.substring(0,1)});
         }
         if(this.state.currentControl == control){
+            if((e.target.id == "newInput" )|| (e.target.id == "newContainer")){
+                control = e.target.parentNode;
+                this.setState({currentControl: control});
+            }
             control.addEventListener("keydown", this.deleteControl);
         }
     }
@@ -351,13 +354,14 @@ class ListScreen extends Component {
         this.setState({modalTrig: "modal-trigger"}, () =>{});
         var textfield = document.createElement("form");
         textfield.id = "newTextfield";
-        textfield.className = "text_toolbar";
+        textfield.class = "text_toolbar";
         textfield.name = (Math.random() * 1000);
         var input = document.createElement("input");
         input.className = "browser-default";
+        input.value = this.state.newInputVal;
         input.name = "newInput";
         input.id = "newInput";
-        input.value = this.state.newInputVal;
+        input.addEventListener('change', this.handleChange);
         input.type = "text";
         textfield.appendChild(input);
         textfield.style.position = "relative";
@@ -526,7 +530,8 @@ class ListScreen extends Component {
         wf.style.transform = "scale(1.2, 1.2)";
     }
     ZoomOut = () =>{
-
+        var wf = document.getElementById("Wireframe");
+        wf.style.transform = "scale(.87, .87)";
     }
 
     render() {
@@ -613,7 +618,7 @@ class ListScreen extends Component {
                     <b onClick = {this.addButton} style = {btnlabel}>Button</b>
                     <div class = "input-field" style = {TextfieldInput}>
                         <label>input</label>
-                        <input className = "active" type= "text" ></input>
+                        <input name = "hello" className = "active" type= "text" ></input>
                     </div>
                     <b onClick = {this.addTextfield} style = {textfield}>Textfield</b>
                 </div>
